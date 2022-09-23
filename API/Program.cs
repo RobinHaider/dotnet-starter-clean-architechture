@@ -17,6 +17,7 @@ builder.Services.AddControllers().AddFluentValidation(config =>
 builder.Services.AddEndpointsApiExplorer();
 // application service extension
 builder.Services.ApplicationServices(builder.Configuration);
+builder.Services.AddIdentityServices(builder.Configuration);
 
 var app = builder.Build();
 
