@@ -7,15 +7,15 @@ namespace API.Controllers
 {
     public class ActivitiesController : BaseApiController
     {
-
+        [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<List<Activity>>> GetActivities(CancellationToken ct)
+        public async Task<ActionResult<List<ActivityDto>>> GetActivities(CancellationToken ct)
         {
             return HandleResult(await Mediator.Send(new List.Query(), ct));
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Activity>> GetActivity(Guid id)
+        public async Task<ActionResult<ActivityDto>> GetActivity(Guid id)
         {
             return HandleResult(await Mediator.Send(new Details.Query { Id = id }));
         }
