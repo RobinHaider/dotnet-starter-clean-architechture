@@ -9,9 +9,9 @@ namespace API.Controllers
     {
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<List<ActivityDto>>> GetActivities(CancellationToken ct)
+        public async Task<IActionResult> GetActivities([FromQuery] ActivityParams param)
         {
-            return HandleResult(await Mediator.Send(new List.Query(), ct));
+            return HandlePagedResult(await Mediator.Send(new List.Query { Params = param }));
         }
 
         [HttpGet("{id}")]
