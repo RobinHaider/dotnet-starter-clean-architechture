@@ -10,6 +10,7 @@ namespace Persistence
         {
         }
 
+        public DbSet<UserPhoto> Photos { get; set; }
         public DbSet<Activity> Activities { get; set; }
         public DbSet<ActivityAttendee> ActivityAttendees { get; set; }
 
