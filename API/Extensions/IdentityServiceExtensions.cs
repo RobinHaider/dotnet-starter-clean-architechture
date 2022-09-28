@@ -36,8 +36,9 @@ namespace API.Extensions
                         IssuerSigningKey = key,
                         ValidateIssuer = false,
                         ValidateAudience = false,
-                        // ValidateLifetime = true,
-                        // ClockSkew = TimeSpan.Zero
+                        ValidateLifetime = true, // validate expire date
+                        // it will unvalidate imdealty after token expire, which deafult was five minute after expires
+                        ClockSkew = TimeSpan.Zero
                     };
                     // for signalR
                     opt.Events = new JwtBearerEvents
