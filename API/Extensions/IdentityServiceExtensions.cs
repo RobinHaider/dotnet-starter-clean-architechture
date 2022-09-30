@@ -21,9 +21,11 @@ namespace API.Extensions
                 opt.Password.RequireNonAlphanumeric = false;
                 opt.Password.RequireUppercase = false;
                 opt.Password.RequireLowercase = false;
+                opt.SignIn.RequireConfirmedEmail = true; // require email confirmation
             })
             .AddEntityFrameworkStores<DataContext>()
-            .AddSignInManager<SignInManager<AppUser>>();
+            .AddSignInManager<SignInManager<AppUser>>()
+            .AddDefaultTokenProviders();
 
             // add jwt authentication sceme
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["TokenKey"]));

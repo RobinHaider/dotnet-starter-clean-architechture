@@ -7,6 +7,7 @@ using Application.Cloudinary;
 using Application.Core;
 using Application.Interfaces;
 using Infrastructure.CloudinaryFunctionality;
+using Infrastructure.Email;
 using Infrastructure.Security;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,10 @@ namespace API.Extensions
             // cloudinary settings
             services.AddScoped<ICloudinaryAccessor, CloudinaryAccessor>();
             services.Configure<CloudinarySettings>(configuration.GetSection("Cloudinary"));
+
+            // sendgrid email service
+            services.AddScoped<SendgridEmailService>();
+
 
             return services;
         }
