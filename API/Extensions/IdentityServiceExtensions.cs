@@ -1,4 +1,5 @@
 using System.Text;
+using API.Helpers;
 using API.Services;
 using Domain;
 using Infrastructure.Security;
@@ -21,22 +22,33 @@ namespace API.Extensions
                 opt.Password.RequireNonAlphanumeric = false;
                 opt.Password.RequireUppercase = false;
                 opt.Password.RequireLowercase = false;
-                opt.SignIn.RequireConfirmedEmail = true; // require email confirmation
+
+                opt.User.RequireUniqueEmail = true;
+                opt.SignIn.RequireConfirmedEmail = true;
+                opt.Tokens.EmailConfirmationTokenProvider = "emailconfirmation";
+                opt.Lockout.AllowedForNewUsers = true;
+                opt.Lockout.MaxFailedAccessAttempts = 10;
+                opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
             })
             .AddEntityFrameworkStores<DataContext>()
             .AddSignInManager<SignInManager<AppUser>>()
-            .AddDefaultTokenProviders();
+            .AddRoleValidator<RoleValidator<IdentityRole>>()
+            .AddRoleManager<RoleManager<IdentityRole>>()
+            .AddTokenProvider<EmailConfirmationTokenProvider<AppUser>>("emailconfirmation").AddDefaultTokenProviders();
+
+            services.Configure<EmailConfirmationTokenProviderOptions>(opt => opt.TokenLifespan = TimeSpan.FromDays(1));
+            services.Configure<DataProtectionTokenProviderOptions>(opts => opts.TokenLifespan = TimeSpan.FromDays(1));
 
             // add jwt authentication sceme
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["TokenKey"]));
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(opt =>
                 {
                     opt.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = key,
-                        ValidateIssuer = false,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:Key"])),
+                        ValidIssuer = configuration["Token:Issuer"],
+                        ValidateIssuer = true,
                         ValidateAudience = false,
                         ValidateLifetime = true, // validate expire date
                         // it will unvalidate imdealty after token expire, which deafult was five minute after expires
@@ -46,15 +58,18 @@ namespace API.Extensions
                     opt.Events = new JwtBearerEvents
                     {
                         OnMessageReceived = context =>
-                        {
-                            var accessToken = context.Request.Query["access_token"];
-                            var path = context.HttpContext.Request.Path;
-                            if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/chat")))
-                            {
-                                context.Token = accessToken;
-                            }
-                            return Task.CompletedTask;
-                        }
+                       {
+                           var accessToken = context.Request.Query["access_token"];
+
+                           var path = context.HttpContext.Request.Path;
+                           if (!string.IsNullOrEmpty(accessToken) &&
+                               path.StartsWithSegments("/hubs"))
+                           {
+                               context.Token = accessToken;
+                           }
+
+                           return Task.CompletedTask;
+                       }
                     };
                 });
 

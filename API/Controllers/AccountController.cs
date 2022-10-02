@@ -56,7 +56,7 @@ namespace API.Controllers
             if (result.Succeeded)
             {
                 await SetRefreshToken(user);
-                return CreateUserObject(user);
+                return await CreateUserObject(user);
             }
 
             return Unauthorized("Invalid password");
@@ -142,7 +142,7 @@ namespace API.Controllers
             var user = await _userManager.Users.Include(p => p.Photos)
                 .FirstOrDefaultAsync(x => x.Email == User.FindFirstValue(ClaimTypes.Email));
             await SetRefreshToken(user);
-            return CreateUserObject(user);
+            return await CreateUserObject(user);
         }
 
         [AllowAnonymous]
@@ -169,7 +169,7 @@ namespace API.Controllers
             var user = await _userManager.Users.Include(p => p.Photos)
                 .FirstOrDefaultAsync(x => x.UserName == username);
 
-            if (user != null) return CreateUserObject(user);
+            if (user != null) return await CreateUserObject(user);
 
             user = new AppUser
             {
@@ -193,7 +193,7 @@ namespace API.Controllers
             if (!result.Succeeded) return BadRequest("Problem creating user account");
 
             await SetRefreshToken(user);
-            return CreateUserObject(user);
+            return await CreateUserObject(user);
         }
 
         [Authorize]
@@ -212,7 +212,7 @@ namespace API.Controllers
 
             if (oldToken != null && !oldToken.IsActive) return Unauthorized();
 
-            return CreateUserObject(user);
+            return await CreateUserObject(user);
         }
 
         private async Task SetRefreshToken(AppUser user)
@@ -231,13 +231,13 @@ namespace API.Controllers
             Response.Cookies.Append("refreshToken", refreshToken.Token, cookieOptions);
         }
 
-        private UserDto CreateUserObject(AppUser user)
+        private async Task<UserDto> CreateUserObject(AppUser user)
         {
             return new UserDto
             {
                 DisplayName = user.DisplayName,
                 Image = user?.Photos?.FirstOrDefault(x => x.IsMain)?.Url,
-                Token = _tokenService.CreateToken(user),
+                Token = await _tokenService.CreateTokenAsync(user),
                 Username = user.UserName
             };
         }
