@@ -15,29 +15,30 @@ namespace API.Extensions
     {
         public static IServiceCollection AddIdentityServices(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddIdentityCore<AppUser>(opt =>
-            {
-                opt.Password.RequireDigit = false;
-                opt.Password.RequiredLength = 4;
-                opt.Password.RequireNonAlphanumeric = false;
-                opt.Password.RequireUppercase = false;
-                opt.Password.RequireLowercase = false;
+            IdentityBuilder builder = services.AddIdentityCore<AppUser>(opt =>
+           {
+               opt.Password.RequireDigit = false;
+               opt.Password.RequiredLength = 4;
+               opt.Password.RequireNonAlphanumeric = false;
+               opt.Password.RequireUppercase = false;
+               opt.Password.RequireLowercase = false;
 
-                opt.User.RequireUniqueEmail = true;
-                opt.SignIn.RequireConfirmedEmail = true;
-                opt.Tokens.EmailConfirmationTokenProvider = "emailconfirmation";
-                opt.Lockout.AllowedForNewUsers = true;
-                opt.Lockout.MaxFailedAccessAttempts = 10;
-                opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
-            })
-            .AddEntityFrameworkStores<DataContext>()
-            .AddSignInManager<SignInManager<AppUser>>()
-            .AddRoleValidator<RoleValidator<IdentityRole>>()
-            .AddRoleManager<RoleManager<IdentityRole>>()
-            .AddTokenProvider<EmailConfirmationTokenProvider<AppUser>>("emailconfirmation").AddDefaultTokenProviders();
+               opt.User.RequireUniqueEmail = true;
+               opt.SignIn.RequireConfirmedEmail = true;
+               opt.Tokens.EmailConfirmationTokenProvider = "emailconfirmation";
+               opt.Lockout.AllowedForNewUsers = true;
+               opt.Lockout.MaxFailedAccessAttempts = 10;
+               opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
 
+           }).AddTokenProvider<EmailConfirmationTokenProvider<AppUser>>("emailconfirmation").AddDefaultTokenProviders();
             services.Configure<EmailConfirmationTokenProviderOptions>(opt => opt.TokenLifespan = TimeSpan.FromDays(1));
             services.Configure<DataProtectionTokenProviderOptions>(opts => opts.TokenLifespan = TimeSpan.FromDays(1));
+            builder = new IdentityBuilder(builder.UserType, typeof(IdentityRole), builder.Services);
+            builder.AddEntityFrameworkStores<DataContext>();
+            builder.AddRoleValidator<RoleValidator<IdentityRole>>();
+            builder.AddRoleManager<RoleManager<IdentityRole>>();
+            builder.AddSignInManager<SignInManager<AppUser>>();
+
 
             // add jwt authentication sceme
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
