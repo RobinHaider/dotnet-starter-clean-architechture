@@ -49,7 +49,7 @@ namespace API.Controllers
 
             if (user.UserName == "bob") user.EmailConfirmed = true;
 
-            if (!user.EmailConfirmed) return Unauthorized("Email not confirmed");
+            //if (!user.EmailConfirmed) return Unauthorized("Email not confirmed");
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
 
@@ -79,7 +79,8 @@ namespace API.Controllers
 
             var user = new AppUser
             {
-                DisplayName = registerDto.DisplayName,
+                FirstName = registerDto.FirstName,
+                LastName = registerDto.LastName,
                 Email = registerDto.Email,
                 UserName = registerDto.Username
             };
@@ -95,9 +96,10 @@ namespace API.Controllers
             var verifyUrl = $"{origin}/account/verifyEmail?token={token}&email={user.Email}";
             var message = $"<p>Please click the below link to verify your email address:</p><p><a href='{verifyUrl}'>Click to verify email</a></p>";
 
-            await _emailSender.SendEmailAsync(user.Email, "Please verify email", message);
+            //await _emailSender.SendEmailAsync(user.Email, "Please verify email", message);
 
-            return Ok("Registration success - please verify email");
+            //return Ok(new {Result = "Registration success - please verify email" });
+            return Ok(new {Result = "Registration success - Login with your email" });
         }
 
         [AllowAnonymous]
@@ -173,7 +175,7 @@ namespace API.Controllers
 
             user = new AppUser
             {
-                DisplayName = (string)fbInfo.name,
+                FirstName = (string)fbInfo.name,
                 Email = (string)fbInfo.email,
                 UserName = (string)fbInfo.id,
                 Photos = new List<UserPhoto>
@@ -235,10 +237,11 @@ namespace API.Controllers
         {
             return new UserDto
             {
-                DisplayName = user.DisplayName,
+                DisplayName = $"{user.FirstName} {user.LastName}",
                 Image = user?.Photos?.FirstOrDefault(x => x.IsMain)?.Url,
                 Token = await _tokenService.CreateTokenAsync(user),
-                Username = user.UserName
+                Username = user.UserName,
+                Roles = await _userManager.GetRolesAsync(user)
             };
         }
     }

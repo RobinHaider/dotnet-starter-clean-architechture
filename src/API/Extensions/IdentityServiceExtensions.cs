@@ -24,7 +24,7 @@ namespace API.Extensions
                opt.Password.RequireLowercase = false;
 
                opt.User.RequireUniqueEmail = true;
-               opt.SignIn.RequireConfirmedEmail = true;
+               opt.SignIn.RequireConfirmedEmail = false;
                opt.Tokens.EmailConfirmationTokenProvider = "emailconfirmation";
                opt.Lockout.AllowedForNewUsers = true;
                opt.Lockout.MaxFailedAccessAttempts = 10;

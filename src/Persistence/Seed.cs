@@ -155,34 +155,39 @@ namespace Persistence
             {
                 var superAdmin = new AppUser
                 {
+                    FirstName = "SuperAdmin",
+                    LastName = "User",
                     Email = "superadmin@gmail.com",
                     UserName = "SuperAdminUser"
                 };
-                await userManager.CreateAsync(superAdmin, "123456");
+                await userManager.CreateAsync(superAdmin, "Superadmin1$");
                 await userManager.AddToRoleAsync(superAdmin, "superadmin");
 
                 var admin = new AppUser
-                {
+                {   FirstName = "Admin",
+                    LastName = "User",
                     Email = "admin@gmail.com",
                     UserName = "AdminUser"
                 };
-                await userManager.CreateAsync(admin, "123456");
+                await userManager.CreateAsync(admin, "Admin1$");
                 await userManager.AddToRoleAsync(admin, "admin");
 
                 var customer = new AppUser
-                {
+                {  
+                    FirstName = "Customer",
+                    LastName = "User",
                     Email = "customer@gmail.com",
                     UserName = "CustomerUser"
                 };
-                await userManager.CreateAsync(customer, "123456");
+                await userManager.CreateAsync(customer, "Customer1$");
                 await userManager.AddToRoleAsync(customer, "customer");
 
                 // seed users
 
                 var users = new List<AppUser>{
-                    new AppUser {DisplayName="Bob", UserName="bob", Email="bob@test.com"},
-                    new AppUser {DisplayName="Tom", UserName="tom", Email="tom@test.com"},
-                    new AppUser {DisplayName="Jane", UserName="jane", Email="jane@test.com"}
+                    new AppUser {FirstName="Bob", LastName="User", UserName="bob", Email="bob@test.com"},
+                    new AppUser {FirstName="Tom", LastName="User", UserName="tom", Email="tom@test.com"},
+                    new AppUser {FirstName="Jane", LastName="User", UserName="jane", Email="jane@test.com"}
                 };
 
                 foreach (var user in users)
