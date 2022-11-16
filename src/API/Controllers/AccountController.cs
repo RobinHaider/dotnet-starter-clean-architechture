@@ -198,7 +198,8 @@ namespace API.Controllers
             return await CreateUserObject(user);
         }
 
-        [Authorize]
+        //[Authorize]
+        [AllowAnonymous]
         [HttpPost("refreshToken")]
         public async Task<ActionResult<UserDto>> RefreshToken()
         {

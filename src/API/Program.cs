@@ -27,13 +27,7 @@ builder.Services.AddEndpointsApiExplorer();
 // application service extension
 builder.Services.ApplicationServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
-builder.Services.AddCors(opt =>
-{
-    opt.AddPolicy("CorsPolicy", policy =>
-    {
-        policy.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost:4001");
-    });
-});
+
 
 var app = builder.Build();
 

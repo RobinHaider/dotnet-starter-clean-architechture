@@ -35,6 +35,18 @@ namespace API.Extensions
             // sendgrid email service
             services.AddScoped<SendgridEmailService>();
 
+            services.AddCors(opt =>
+            {
+                opt.AddPolicy("CorsPolicy", policy =>
+                {
+                    policy
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials()
+                        .WithExposedHeaders("WWW-Authenticate", "Pagination")
+                        .WithOrigins("http://localhost:4001");
+                });
+            });
 
             return services;
         }
