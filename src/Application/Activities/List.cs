@@ -3,6 +3,7 @@ using Application.Interfaces;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using MediatR;
+using Microsoft.Data.SqlClient;
 using Persistence;
 
 namespace Application.Activities
@@ -45,10 +46,56 @@ namespace Application.Activities
                     query = query.Where(x => x.HostUsername == _userAccessor.GetUsername());
                 }
 
+                // search by title
+                if (!string.IsNullOrWhiteSpace(request.Params.Search)){
+                    query = query.Where(x => x.Title.Contains(request.Params.Search));
+                }
+
+                // sort
+                query = GetSortQuery(query, request.Params.Sort ?? request.Params.DefaultSort);
+
                 return Result<PagedList<ActivityDto>>.Success(
                     await PagedList<ActivityDto>.CreateAsync(query, request.Params.PageNumber,
                         request.Params.PageSize)
                 );
+            }
+
+
+            // get sort query
+            public IQueryable<ActivityDto> GetSortQuery(IQueryable<ActivityDto> query, string sort)
+            {
+                switch (sort)
+                {
+                    case "title":
+                        query = query.OrderBy(s => s.Title);
+                        break;
+                    case "title_desc":
+                        query = query.OrderByDescending(s => s.Title);
+                        break;
+                    case "date":
+                        query = query.OrderBy(s => s.Date);
+                        break;
+                    case "date_desc":
+                        query = query.OrderByDescending(s => s.Date);
+                        break;
+                    case "city":
+                        query = query.OrderBy(s => s.City);
+                        break;
+                    case "city_desc":
+                        query = query.OrderByDescending(s => s.City);
+                        break;
+                    case "venue":
+                        query = query.OrderBy(s => s.Venue);
+                        break;
+                    case "venue_desc":
+                        query = query.OrderByDescending(s => s.Venue);
+                        break;
+                    default:
+                        query = query.OrderBy(s => s.Title);
+                        break;
+                }
+
+                return query;
             }
         }
     }

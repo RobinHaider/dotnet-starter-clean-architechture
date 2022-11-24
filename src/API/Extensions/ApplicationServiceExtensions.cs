@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using API.Extensions.Policies;
 using Application.Activities;
 using Application.Cloudinary;
 using Application.Core;
@@ -47,6 +48,9 @@ namespace API.Extensions
                         .WithOrigins("http://localhost:4001");
                 });
             });
+
+            // authriztion policy
+            services.AddAuthorizationServices();
 
             return services;
         }

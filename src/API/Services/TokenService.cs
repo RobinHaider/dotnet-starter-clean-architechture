@@ -41,7 +41,7 @@ namespace API.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(1), // change it as your requirement
+                Expires = DateTime.UtcNow.AddMinutes(60), // change it as your requirement
                 SigningCredentials = creds,
                 Issuer = _config["Token:Issuer"]
             };

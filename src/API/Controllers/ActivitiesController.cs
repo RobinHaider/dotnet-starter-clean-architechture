@@ -7,7 +7,8 @@ namespace API.Controllers
 {
     public class ActivitiesController : BaseApiController
     {
-        [AllowAnonymous]
+        //[AllowAnonymous]
+        [Authorize(Policy = "AdminAccess")]
         [HttpGet]
         public async Task<IActionResult> GetActivities([FromQuery] ActivityParams param)
         {
