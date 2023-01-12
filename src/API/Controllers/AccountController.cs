@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text;
 using API.DTOs;
+using API.Helpers;
 using API.Services;
+using Application.Services;
 using Domain;
 using Infrastructure.Email;
 using Microsoft.AspNetCore.Authorization;
@@ -9,13 +11,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AccountController : ControllerBase
+    public class AccountController : BaseApiController
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
@@ -23,11 +26,15 @@ namespace API.Controllers
         private readonly IConfiguration _config;
         private readonly HttpClient _httpClient;
         private readonly SendgridEmailService _emailSender;
+        private readonly IUserService _userService;
+        private readonly JWTSettings _jwtSettings;
+        private readonly int _refreshTokenValidityInDays;
         public AccountController(UserManager<AppUser> userManager,
             SignInManager<AppUser> signInManager, TokenService tokenService,
-            IConfiguration config, SendgridEmailService emailSender)
+            IConfiguration config, SendgridEmailService emailSender, IOptions<JWTSettings> jwtSettings, IUserService userService)
         {
             _emailSender = emailSender;
+            _userService = userService;
             _config = config;
             _tokenService = tokenService;
             _signInManager = signInManager;
@@ -36,13 +43,42 @@ namespace API.Controllers
             {
                 BaseAddress = new System.Uri("https://graph.facebook.com")
             };
+            _jwtSettings = jwtSettings.Value;
+            _refreshTokenValidityInDays = Int32.Parse(_jwtSettings.RefreshTokenValidityInDays);
+        }
+
+        //[Authorize]
+        [AllowAnonymous]
+        [HttpPost("refreshToken")]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<UserDto>> RefreshToken()
+
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(refreshToken)) return Unauthorized();
+
+            var response = await _userService.RefreshToken(refreshToken, ipAddress(), _refreshTokenValidityInDays);
+
+            if (response == null) return Unauthorized();
+
+            setTokenCookie(response.RefreshToken.Token, response.RefreshToken.RememberMe);
+            return await createUserObject(response.User);
         }
 
         [AllowAnonymous]
         [HttpPost("login")]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
         {
             var user = await _userManager.Users.Include(p => p.Photos)
+                .Include(r => r.RefreshTokens)
                 .FirstOrDefaultAsync(x => x.Email == loginDto.Email);
 
             if (user == null) return Unauthorized("Invalid email");
@@ -55,8 +91,9 @@ namespace API.Controllers
 
             if (result.Succeeded)
             {
-                await SetRefreshToken(user);
-                return await CreateUserObject(user);
+                var refreshToken = await _userService.LoginRefreshToken(user, ipAddress(), loginDto.RememberMe, _refreshTokenValidityInDays);
+                setTokenCookie(refreshToken, loginDto.RememberMe);
+                return await createUserObject(user);
             }
 
             return Unauthorized("Invalid password");
@@ -64,6 +101,10 @@ namespace API.Controllers
 
         [AllowAnonymous]
         [HttpPost("register")]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
         {
             if (await _userManager.Users.AnyAsync(x => x.Email == registerDto.Email))
@@ -99,11 +140,15 @@ namespace API.Controllers
             //await _emailSender.SendEmailAsync(user.Email, "Please verify email", message);
 
             //return Ok(new {Result = "Registration success - please verify email" });
-            return Ok(new {Result = "Registration success - Login with your email" });
+            return Ok(new { Result = "Registration success - Login with your email" });
         }
 
         [AllowAnonymous]
         [HttpPost("verifyEmail")]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> VerifyEmail(string token, string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
@@ -119,6 +164,10 @@ namespace API.Controllers
 
         [AllowAnonymous]
         [HttpGet("resendEmailConfirmationLink")]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ResendEmailConfirmationLink(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
@@ -139,16 +188,50 @@ namespace API.Controllers
 
         [Authorize]
         [HttpGet]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserDto>> GetCurrentUser()
         {
             var user = await _userManager.Users.Include(p => p.Photos)
                 .FirstOrDefaultAsync(x => x.Email == User.FindFirstValue(ClaimTypes.Email));
-            await SetRefreshToken(user);
-            return await CreateUserObject(user);
+            //await SetRefreshToken(user);
+            return await createUserObject(user);
+        }
+
+        [Authorize]
+        [HttpPost("logout")]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<UserDto>> LogOut()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(refreshToken)) return Unauthorized();
+
+            var user = await _userManager.Users
+                 .Include(r => r.RefreshTokens)
+                .FirstOrDefaultAsync(x => x.Email == User.FindFirstValue(ClaimTypes.Email));
+            if (user == null) return Unauthorized();
+
+            var success = await _userService.LogoutToken(user, refreshToken, ipAddress());
+
+            if (!success) return Unauthorized();
+
+            Response.Cookies.Delete("refreshToken");
+
+            return Ok();
+
+
         }
 
         [AllowAnonymous]
         [HttpPost("fbLogin")]
+        [ProducesDefaultResponseType]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserDto>> FacebookLogin(string accessToken)
         {
             var fbVerifyKeys = _config["Facebook:AppId"] + "|" + _config["Facebook:AppSecret"];
@@ -171,7 +254,7 @@ namespace API.Controllers
             var user = await _userManager.Users.Include(p => p.Photos)
                 .FirstOrDefaultAsync(x => x.UserName == username);
 
-            if (user != null) return await CreateUserObject(user);
+            if (user != null) return await createUserObject(user);
 
             user = new AppUser
             {
@@ -194,47 +277,31 @@ namespace API.Controllers
 
             if (!result.Succeeded) return BadRequest("Problem creating user account");
 
-            await SetRefreshToken(user);
-            return await CreateUserObject(user);
+            var refreshToken = await _userService.LoginRefreshToken(user, ipAddress(), rememberMe: false, _refreshTokenValidityInDays);
+            setTokenCookie(refreshToken, false);
+            return await createUserObject(user);
         }
 
-        //[Authorize]
-        [AllowAnonymous]
-        [HttpPost("refreshToken")]
-        public async Task<ActionResult<UserDto>> RefreshToken()
+
+
+        private async void setTokenCookie(string token, bool rememberMe)
         {
-            var refreshToken = Request.Cookies["refreshToken"];
-            var user = await _userManager.Users
-                .Include(r => r.RefreshTokens)
-                .Include(p => p.Photos)
-                .FirstOrDefaultAsync(x => x.UserName == User.FindFirstValue(ClaimTypes.Name));
 
-            if (user == null) return Unauthorized();
-
-            var oldToken = user.RefreshTokens.SingleOrDefault(x => x.Token == refreshToken);
-
-            if (oldToken != null && !oldToken.IsActive) return Unauthorized();
-
-            return await CreateUserObject(user);
-        }
-
-        private async Task SetRefreshToken(AppUser user)
-        {
-            var refreshToken = _tokenService.GenerateRefreshToken();
-
-            user.RefreshTokens.Add(refreshToken);
-            await _userManager.UpdateAsync(user);
+            int refreshTokenValidityInDays = Int32.Parse(_jwtSettings.RefreshTokenValidityInDays);
 
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Expires = DateTime.UtcNow.AddDays(7)
+                Expires = rememberMe ? DateTime.UtcNow.AddDays(refreshTokenValidityInDays) : null,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                //Domain = "example.com"
             };
 
-            Response.Cookies.Append("refreshToken", refreshToken.Token, cookieOptions);
+            Response.Cookies.Append("refreshToken", token, cookieOptions);
         }
 
-        private async Task<UserDto> CreateUserObject(AppUser user)
+        private async Task<UserDto> createUserObject(AppUser user)
         {
             return new UserDto
             {
@@ -244,6 +311,15 @@ namespace API.Controllers
                 Username = user.UserName,
                 Roles = await _userManager.GetRolesAsync(user)
             };
+        }
+
+        private string ipAddress()
+        {
+            // get source ip address for the current request
+            if (Request.Headers.ContainsKey("X-Forwarded-For"))
+                return Request.Headers["X-Forwarded-For"];
+            else
+                return HttpContext.Connection.RemoteIpAddress.MapToIPv4().ToString();
         }
     }
 }

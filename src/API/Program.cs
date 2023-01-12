@@ -1,4 +1,5 @@
 using API.Extensions;
+using API.Helpers;
 using API.Middleware;
 using Application.Activities;
 using Domain;
@@ -24,9 +25,15 @@ builder.Services.AddControllers(opt =>
 });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
+// configurations
+var jwtSettingsSection = builder.Configuration.GetSection("JWT");
+var jwtSettings = jwtSettingsSection.Get<JWTSettings>();
+builder.Services.Configure<JWTSettings>(jwtSettingsSection);
+
 // application service extension
 builder.Services.ApplicationServices(builder.Configuration);
-builder.Services.AddIdentityServices(builder.Configuration);
+builder.Services.AddIdentityServices(builder.Configuration, jwtSettings);
 
 
 var app = builder.Build();

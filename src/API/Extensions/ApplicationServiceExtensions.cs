@@ -7,6 +7,7 @@ using Application.Activities;
 using Application.Cloudinary;
 using Application.Core;
 using Application.Interfaces;
+using Application.Services;
 using Infrastructure.CloudinaryFunctionality;
 using Infrastructure.Email;
 using Infrastructure.Security;
@@ -28,6 +29,7 @@ namespace API.Extensions
             services.AddMediatR(typeof(List.Handler).Assembly);
             services.AddAutoMapper(typeof(MappingProfiles).Assembly);
             services.AddScoped<IUserAccessor, UserAccessor>();
+            services.AddScoped<IUserService, UserService>();
 
             // cloudinary settings
             services.AddScoped<ICloudinaryAccessor, CloudinaryAccessor>();

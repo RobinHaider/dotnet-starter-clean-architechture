@@ -13,24 +13,24 @@ namespace API.Extensions
 {
     public static class IdentityServiceExtensions
     {
-        public static IServiceCollection AddIdentityServices(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddIdentityServices(this IServiceCollection services, IConfiguration configuration, JWTSettings jwtSettings)
         {
             IdentityBuilder builder = services.AddIdentityCore<AppUser>(opt =>
-           {
-               opt.Password.RequireDigit = false;
-               opt.Password.RequiredLength = 4;
-               opt.Password.RequireNonAlphanumeric = false;
-               opt.Password.RequireUppercase = false;
-               opt.Password.RequireLowercase = false;
+            {
+                opt.Password.RequireDigit = false;
+                opt.Password.RequiredLength = 4;
+                opt.Password.RequireNonAlphanumeric = false;
+                opt.Password.RequireUppercase = false;
+                opt.Password.RequireLowercase = false;
 
-               opt.User.RequireUniqueEmail = true;
-               opt.SignIn.RequireConfirmedEmail = false;
-               opt.Tokens.EmailConfirmationTokenProvider = "emailconfirmation";
-               opt.Lockout.AllowedForNewUsers = true;
-               opt.Lockout.MaxFailedAccessAttempts = 10;
-               opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
+                opt.User.RequireUniqueEmail = true;
+                opt.SignIn.RequireConfirmedEmail = false;
+                opt.Tokens.EmailConfirmationTokenProvider = "emailconfirmation";
+                opt.Lockout.AllowedForNewUsers = true;
+                opt.Lockout.MaxFailedAccessAttempts = 10;
+                opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
 
-           }).AddTokenProvider<EmailConfirmationTokenProvider<AppUser>>("emailconfirmation").AddDefaultTokenProviders();
+            }).AddTokenProvider<EmailConfirmationTokenProvider<AppUser>>("emailconfirmation").AddDefaultTokenProviders();
             services.Configure<EmailConfirmationTokenProviderOptions>(opt => opt.TokenLifespan = TimeSpan.FromDays(1));
             services.Configure<DataProtectionTokenProviderOptions>(opts => opts.TokenLifespan = TimeSpan.FromDays(1));
             builder = new IdentityBuilder(builder.UserType, typeof(IdentityRole), builder.Services);
@@ -47,8 +47,8 @@ namespace API.Extensions
                     opt.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Token:Key"])),
-                        ValidIssuer = configuration["Token:Issuer"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+                        ValidIssuer = jwtSettings.ValidIssuer,
                         ValidateIssuer = true,
                         ValidateAudience = false,
                         ValidateLifetime = true, // validate expire date
@@ -59,29 +59,29 @@ namespace API.Extensions
                     opt.Events = new JwtBearerEvents
                     {
                         OnMessageReceived = context =>
-                       {
-                           var accessToken = context.Request.Query["access_token"];
+                        {
+                            var accessToken = context.Request.Query["access_token"];
 
-                           var path = context.HttpContext.Request.Path;
-                           if (!string.IsNullOrEmpty(accessToken) &&
-                               path.StartsWithSegments("/hubs"))
-                           {
-                               context.Token = accessToken;
-                           }
+                            var path = context.HttpContext.Request.Path;
+                            if (!string.IsNullOrEmpty(accessToken) &&
+                                path.StartsWithSegments("/hubs"))
+                            {
+                                context.Token = accessToken;
+                            }
 
-                           return Task.CompletedTask;
-                       }
+                            return Task.CompletedTask;
+                        }
                     };
                 });
 
             // for custom authrization policy..
             services.AddAuthorization(opt =>
-           {
-               opt.AddPolicy("IsActivityHost", policy =>
-               {
-                   policy.Requirements.Add(new IsHostRequirement());
-               });
-           });
+            {
+                opt.AddPolicy("IsActivityHost", policy =>
+                {
+                    policy.Requirements.Add(new IsHostRequirement());
+                });
+            });
             services.AddTransient<IAuthorizationHandler, IsHostRequirementHandler>();
             // ---------------
 

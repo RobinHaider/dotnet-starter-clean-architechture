@@ -2,22 +2,24 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using API.Helpers;
 using Domain;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace API.Services
 {
     public class TokenService
     {
-        private readonly IConfiguration _config;
+        private readonly JWTSettings _jwtSettings;
         private readonly UserManager<AppUser> _userManager;
         private readonly SymmetricSecurityKey _key;
-        public TokenService(IConfiguration config, UserManager<AppUser> userManager)
+        public TokenService(IOptions<JWTSettings> jwtSettings, UserManager<AppUser> userManager)
         {
-            _config = config;
+            _jwtSettings = jwtSettings.Value;
             _userManager = userManager;
-            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Token:Key"]));
+            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
         }
 
         public async Task<string> CreateTokenAsync(AppUser user)
@@ -37,13 +39,14 @@ namespace API.Services
             }
 
             var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha512Signature);
+            int tokenValidityInMinutes = Int32.Parse(_jwtSettings.TokenValidityInMinutes);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(60), // change it as your requirement
+                Expires = DateTime.UtcNow.AddMinutes(tokenValidityInMinutes), // change it as your requirement
                 SigningCredentials = creds,
-                Issuer = _config["Token:Issuer"]
+                Issuer = _jwtSettings.ValidIssuer
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -53,13 +56,24 @@ namespace API.Services
             return tokenHandler.WriteToken(token);
         }
 
-        public RefreshToken GenerateRefreshToken()
+        public ClaimsPrincipal? GetPrincipalFromExpiredToken(string? token)
         {
-            var randomNumber = new byte[32];
-            using var rng = RandomNumberGenerator.Create();
-            rng.GetBytes(randomNumber);
-            return new RefreshToken { Token = Convert.ToBase64String(randomNumber) };
-        }
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false,
+                ValidateIssuer = true,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = _key,
+                ValidateLifetime = false
+            };
 
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+            if (securityToken is not JwtSecurityToken jwtSecurityToken || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha512Signature, StringComparison.InvariantCultureIgnoreCase))
+                throw new SecurityTokenException("Invalid token");
+
+            return principal;
+
+        }
     }
 }
