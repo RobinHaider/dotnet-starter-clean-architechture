@@ -21,7 +21,7 @@ namespace API.Extensions
     {
         public static IServiceCollection ApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddSwaggerGen();
+           
             services.AddDbContext<DataContext>(options =>
             {
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));

@@ -3,10 +3,12 @@ using Application.Core;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace API.Controllers
+namespace API.V1.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    //[Route("api/v{version:apiVersion}/[controller]")]
+    [ApiVersion("1.0")]
     public class BaseApiController : ControllerBase
     {
         private IMediator _mediator;

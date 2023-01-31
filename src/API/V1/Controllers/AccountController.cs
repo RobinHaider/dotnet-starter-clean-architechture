@@ -14,11 +14,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
-namespace API.Controllers
+namespace API.V1.Controllers
 {
     [ApiController]
+    [ApiVersion("1.0")]
     [Route("api/[controller]")]
-    public class AccountController : BaseApiController
+    //[Route("api/v{version:apiVersion}/[controller]")] 
+    public class AccountController : ControllerBase
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
@@ -41,10 +43,10 @@ namespace API.Controllers
             _userManager = userManager;
             _httpClient = new HttpClient
             {
-                BaseAddress = new System.Uri("https://graph.facebook.com")
+                BaseAddress = new Uri("https://graph.facebook.com")
             };
             _jwtSettings = jwtSettings.Value;
-            _refreshTokenValidityInDays = Int32.Parse(_jwtSettings.RefreshTokenValidityInDays);
+            _refreshTokenValidityInDays = int.Parse(_jwtSettings.RefreshTokenValidityInDays);
         }
 
         //[Authorize]
@@ -287,7 +289,7 @@ namespace API.Controllers
         private async void setTokenCookie(string token, bool rememberMe)
         {
 
-            int refreshTokenValidityInDays = Int32.Parse(_jwtSettings.RefreshTokenValidityInDays);
+            int refreshTokenValidityInDays = int.Parse(_jwtSettings.RefreshTokenValidityInDays);
 
             var cookieOptions = new CookieOptions
             {

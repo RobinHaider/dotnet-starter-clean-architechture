@@ -3,7 +3,7 @@ using Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace API.Controllers
+namespace API.V1.Controllers
 {
     public class ActivitiesController : BaseApiController
     {
