@@ -1,11 +1,15 @@
+using API.Helpers.RateLimiting;
+using AutoMapper.Internal;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.V2.Controllers
 {
     [ApiController]
     [ApiVersion("2.0")]
-    //[Route("[controller]")]
     [Route("api/[controller]")]
+    [AllowAnonymous]
     public class WeatherForecastController : ControllerBase
     {
         private static readonly string[] Summaries = new[]
@@ -21,6 +25,7 @@ namespace API.V2.Controllers
         }
 
         [HttpGet(Name = "GetWeatherForecast")]
+        [EnableRateLimiting("Fixed")]
         public IEnumerable<WeatherForecast> Get()
         {
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast

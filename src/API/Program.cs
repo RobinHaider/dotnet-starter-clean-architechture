@@ -28,6 +28,7 @@ builder.Services.AddControllers(opt =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddAndConfigureApiVersioning();
 builder.Services.AddAndConfigureSwagger();
+builder.Services.AddAndConfigureRateLimiting();
 
 // configurations
 var jwtSettingsSection = builder.Configuration.GetSection("JWT");
@@ -82,6 +83,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseRateLimiter();
 
 app.UseCors("CorsPolicy");
 
