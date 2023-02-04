@@ -10,6 +10,7 @@ namespace API.V2.Controllers
     [ApiVersion("2.0")]
     [Route("api/[controller]")]
     [AllowAnonymous]
+    //[EnableRateLimiting("Fixed")]
     public class WeatherForecastController : ControllerBase
     {
         private static readonly string[] Summaries = new[]
@@ -25,7 +26,6 @@ namespace API.V2.Controllers
         }
 
         [HttpGet(Name = "GetWeatherForecast")]
-        [EnableRateLimiting("Fixed")]
         public IEnumerable<WeatherForecast> Get()
         {
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast

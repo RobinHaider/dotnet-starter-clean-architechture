@@ -2,6 +2,7 @@ using API.Extensions;
 using API.Helpers;
 using API.Middleware;
 using Application.Activities;
+using AspNetCoreRateLimit;
 using Domain;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
@@ -24,11 +25,14 @@ builder.Services.AddControllers(opt =>
 {
     config.RegisterValidatorsFromAssemblyContaining<Create>();
 });
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+// needed to load configuration from appsettings.json
+builder.Services.AddOptions();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddAndConfigureApiVersioning();
 builder.Services.AddAndConfigureSwagger();
-builder.Services.AddAndConfigureRateLimiting();
+//builder.Services.AddAndConfigureRateLimitingNetSeven();
+builder.Services.AddAndConfigureRateLimitingOld(builder.Configuration);
 
 // configurations
 var jwtSettingsSection = builder.Configuration.GetSection("JWT");
@@ -84,7 +88,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseRateLimiter();
+//app.UseRateLimiter(); // use it if you are using Default dotnet seven ratelimiter
+
+app.UseIpRateLimiting();
 
 app.UseCors("CorsPolicy");
 
